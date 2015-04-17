@@ -1,5 +1,5 @@
-from theano import Op, Apply
-
+import numpy as np
+import theano
 import theano.sandbox.cuda as cuda
 
 try:
@@ -10,7 +10,7 @@ except ImportError:
 
 def to_gputensor(a):
     assert a.is_c_contiguous
-    return GPUTensor(a.shape, dtype=a.dtype, base=a, gpudata=a.gpudata,
+    return GPUTensor(a.shape, dtype=np.dtype(a.dtype), base=a, gpudata=a.gpudata,
                      strides=a.strides, is_trans=False)
 
 
@@ -98,8 +98,6 @@ nervana_dot = NervanaDot()
 
 
 if __name__ == "__main__":
-    import numpy as np
-    import theano
     import theano.tensor as T
 
     x = theano.shared(np.random.randn(200, 300).astype(theano.config.floatX))
@@ -112,4 +110,3 @@ if __name__ == "__main__":
     val2 = prod2.eval()
 
     assert np.allclose(val1, val2)
-
