@@ -2,10 +2,12 @@ import numpy as np
 import theano
 import theano.sandbox.cuda as cuda
 
-try:
-    from nervanagpu.nervanagpu import GPUTensor
-except ImportError:
-    GPUTensor = None
+
+from nervanagpu.nervanagpu import GPUTensor
+from nervanagpu.nervanagpu import NervanaGPU
+
+N = NervanaGPU()
+
 
 
 def to_gputensor(a):
@@ -61,9 +63,6 @@ class NervanaDot(NervanaOp):
         return cuda.CudaNdarrayType(broadcastable=[False, False])
 
     def make_thunk(self, node, storage_map, _, _2):
-        if GPUTensor is None:
-            raise RuntimeError("nervanagpu not found")
-
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
@@ -85,7 +84,7 @@ class NervanaDot(NervanaOp):
             input2_nervana = to_gputensor(inputs[1][0])
             output_nervana = to_gputensor(z[0])
 
-            input1_nervana.dot(input1_nervana, input2_nervana, output_nervana,
+            N.dot(input1_nervana, input2_nervana, output_nervana,
                                alpha=1, beta=0, relu=self.relu)
 
         thunk.inputs = inputs
