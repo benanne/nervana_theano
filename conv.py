@@ -101,8 +101,8 @@ nervana_dot = NervanaDot()
 if __name__ == "__main__":
     import theano.tensor as T
 
-    x = theano.shared(np.random.randn(200, 300).astype(theano.config.floatX))
-    y = theano.shared(np.random.randn(300, 100).astype(theano.config.floatX))
+    x = theano.shared(np.random.randn(2000, 3000).astype(theano.config.floatX))
+    y = theano.shared(np.random.randn(3000, 1000).astype(theano.config.floatX))
 
     prod1 = T.dot(x, y)
     prod2 = nervana_dot(x, y)
