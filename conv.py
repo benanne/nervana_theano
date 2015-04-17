@@ -2,6 +2,7 @@ import numpy as np
 import theano
 import theano.sandbox.cuda as cuda
 
+import theano.misc.pycuda_init
 
 from nervanagpu.nervanagpu import GPUTensor
 from nervanagpu.nervanagpu import NervanaGPU
