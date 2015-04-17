@@ -44,6 +44,19 @@ class NervanaDot(NervanaOp):
     def __init__(self, relu=False):
         self.relu = relu
 
+    def make_node(self, inp1, inp2):
+        inp1 = cuda.basic_ops.gpu_contiguous(
+           cuda.basic_ops.as_cuda_ndarray_variable(inp1))
+        inp2 = cuda.basic_ops.gpu_contiguous(
+           cuda.basic_ops.as_cuda_ndarray_variable(inp2))
+
+        assert inp1.dtype == "float32"
+        assert inp2.dtype == "float32"
+        assert inp1.ndim == 2
+        assert inp2.ndim == 2
+
+        return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
+
     def output_type(self, inp):
         return cuda.CudaNdarrayType(broadcastable=[False, False])
 
