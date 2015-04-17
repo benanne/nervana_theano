@@ -12,6 +12,7 @@ N = NervanaGPU()
 
 def to_gputensor(a):
     assert a.is_c_contiguous
+    strides = tuple(s * 4 for s in a.strides)
     return GPUTensor(a.shape, dtype=np.dtype(a.dtype), base=a, gpudata=a.gpudata,
                      strides=a.strides, is_trans=False)
 
