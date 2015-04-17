@@ -56,7 +56,7 @@ class NervanaDot(NervanaOp):
 
         def thunk():
             input1_shape = inputs[0][0].shape
-            input2_shape inputs[1][0].shape
+            input2_shape = inputs[1][0].shape
 
             assert input1_shape[1] == input2_shape[0]
 
@@ -98,4 +98,5 @@ if __name__ == "__main__":
     val1 = prod1.eval()
     val2 = prod2.eval()
 
-    assert np.allclose(val1, val2a, b)
+    assert np.allclose(val1, val2)
+
