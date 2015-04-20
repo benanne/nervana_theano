@@ -1,6 +1,7 @@
 import numpy as np
 import theano
 import theano.sandbox.cuda as cuda
+from theano.sandbox.cuda.basic_ops import host_from_gpu
 
 import theano.misc.pycuda_init
 
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     y = theano.shared(np.random.randn(3000, 1000).astype(theano.config.floatX))
 
     prod1 = T.dot(x, y)
-    prod2 = nervana_dot(x, y)
+    prod2 = host_from_gpu(nervana_dot(x, y))
 
     val1 = prod1.eval()
     val2 = prod2.eval()
