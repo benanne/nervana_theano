@@ -226,7 +226,6 @@ def _conv(settings, A, B, C, alpha=1.0, relu=False, op="fprop"):
     kernel.prepared_call(*params, shared_size=shared)
 
 
-
 class NervanaConv(NervanaOp):
     __props__ = ('padding', 'strides')
 
@@ -351,7 +350,7 @@ if __name__ == "__main__":
     from theano.sandbox.cuda import dnn
 
     input_shape = (32, 3, 64, 64)
-    filter_shape = (128, 3, 5, 5)
+    filter_shape = (16, 3, 5, 5)
     padding = (2, 2)
     strides = (1, 1)
 
