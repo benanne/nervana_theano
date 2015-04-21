@@ -335,9 +335,11 @@ def nervana_conv(input, filters, padding=0, strides=1, dimshuffle=True):
         axes2 = [4] + range(4)
         out = out.dimshuffle(axes2)
         idcs = [slice(None), slice(None)] + ([0] * (5 - ndim))
+        idcs = tuple(idcs)
         out = out[idcs]
     else:
         idcs = [slice(None)] + ([0] * (5 - ndim))
+        idcs = tuple(idcs)
         out = out[idcs]
 
     return out
