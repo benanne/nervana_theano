@@ -329,8 +329,8 @@ if __name__ == "__main__":
     import theano.tensor as T
     from theano.sandbox.cuda import dnn
 
-    input_shape = (128, 64, 128, 128)
-    filter_shape = (256, 64, 3, 3)
+    input_shape = (128, 64, 96, 96)
+    filter_shape = (64, 64, 3, 3)
     padding = (1, 1)
     strides = (1, 1)
 
