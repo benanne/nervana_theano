@@ -13,26 +13,6 @@ from operator import mul
 from gemm import to_gputensor, NervanaOp, lib
 
 
-# size: layer.fprop_size
-# grid: layer.fprop_grid
-# block: layer.fprop_block
-# args: layer.kernel_args
-# shared: layer.lut_size
-# A: I (input)
-# B: F (filters)
-# C: O (output)
-# alpha: alpha
-# relu: relu
-# zero: False
-
-
-# interface to aim for:
-# fprop_conv(I, F, O, alpha=1.0, relu=False):
-
-# need to eliminate: size, grid, block, args, shared
-
-
-
 def _compute_kernel_settings(N, C, K,
                              D=1, H=1, W=1,
                              T=1, R=1, S=1,
@@ -357,7 +337,7 @@ if __name__ == "__main__":
     x = theano.shared(np.random.normal(0, 1, input_shape).astype(theano.config.floatX))
     w = theano.shared(np.random.normal(0, 1, filter_shape).astype(theano.config.floatX))
 
-    y_cudnn = host_from_gpu(dnn.dnn_conv(x, w, border_mode=padding, subsample=strides))
+    y_cudnn = host_from_gpu(dnn.dnn_conv(x, w, border_mode=padding, subsample=strides, conv_mode='cross'))
     y_nervana = nervana_conv(x, w, padding=padding, strides=strides)
 
     val_cudnn = y_cudnn.eval()
