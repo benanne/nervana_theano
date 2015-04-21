@@ -274,7 +274,12 @@ class NervanaConv(NervanaOp):
 
 # TODO: support border modes ('valid', 'same', 'full')
 # TODO: gradient ops
+# TODO: test how much of a problem the dimshuffles are in a real network (does Theano eliminate them? It seems like it does for the cuda-convnet wrappers...)
+# TODO: optimize the thunk code a bit, recomputing the settings every time can be avoided by checking shapes.
+# TODO: implement an optimization to swap it in so conv2d can be used?
+# TODO: implement a Conv2DNervanaLayer for Lasagne?
 # TODO: built in relu support (with optimization to enable it?)
+
 
 def nervana_conv(input, filters, padding=0, strides=1, dimshuffle=True):
     ndim = input.ndim
