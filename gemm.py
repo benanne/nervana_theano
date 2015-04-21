@@ -8,7 +8,7 @@ import theano.misc.pycuda_init
 from nervanagpu.nervanagpu import GPUTensor
 from nervanagpu.nervanagpu import NervanaGPU
 
-lib = NervanaGPU()
+lib = NervanaGPU(stochastic_round=False)
 
 
 
