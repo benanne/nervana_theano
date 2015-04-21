@@ -312,13 +312,13 @@ def nervana_conv(input, filters, padding=0, strides=1, dimshuffle=True):
         padding = (padding,) * cdim
     elif isinstance(padding, tuple):
         assert len(padding) == cdim
-    padding = ((0,) * (len(padding) - cdim)) + padding
+    padding = ((0,) * (cdim - len(padding))) + padding
 
     if isinstance(strides, int):
         strides = (strides,) * cdim
     elif isinstance(strides, tuple):
         assert len(strides) == cdim
-    strides = ((1,) * (len(padding) - cdim)) + strides
+    strides = ((1,) * (cdim - len(padding))) + strides
 
     if dimshuffle:  # convert from batch_size_first to batch_size_last and 3D in one go
         axes = [1] + (['x'] * (5 - ndim)) + range(2, ndim) + [0]
