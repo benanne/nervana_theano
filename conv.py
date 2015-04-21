@@ -329,9 +329,9 @@ if __name__ == "__main__":
     import theano.tensor as T
     from theano.sandbox.cuda import dnn
 
-    input_shape = (128, 32, 64, 64)
-    filter_shape = (64, 32, 3, 3)
-    padding = (2, 2)
+    input_shape = (128, 64, 128, 128)
+    filter_shape = (256, 64, 3, 3)
+    padding = (1, 1)
     strides = (1, 1)
 
     x = theano.shared(np.random.normal(0, 1, input_shape).astype(theano.config.floatX))
