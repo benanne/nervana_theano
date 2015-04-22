@@ -9,7 +9,10 @@ from mnist import _load_data
 from mnist import create_iter_functions
 from mnist import train
 
+
+from lasagne.layer.cuda_convnet import bc01_to_c01b, c01b_to_bc01, MaxPool2DCCLayer
 import layers
+
 
 
 NUM_EPOCHS = 500
@@ -51,14 +54,17 @@ def build_model(input_width, input_height, output_dim,
         shape=(batch_size, 1, input_width, input_height),
         )
 
+    l_in_c01b = bc01_to_c01b(l_in)
+
     l_conv1 = layers.NervanaConvLayer(
-        l_in,
+        l_in_c01b,
         num_filters=32,
         filter_size=(5, 5),
         nonlinearity=lasagne.nonlinearities.rectify,
         W=lasagne.init.GlorotUniform(),
+        dimshuffle=False,
         )
-    l_pool1 = lasagne.layers.MaxPool2DLayer(l_conv1, ds=(2, 2))
+    l_pool1 = MaxPool2DCCLayer(l_conv1, ds=(2, 2), dimshuffle=False)
 
     l_conv2 = layers.NervanaConvLayer(
         l_pool1,
@@ -66,11 +72,14 @@ def build_model(input_width, input_height, output_dim,
         filter_size=(5, 5),
         nonlinearity=lasagne.nonlinearities.rectify,
         W=lasagne.init.GlorotUniform(),
+        dimshuffle=False,
         )
-    l_pool2 = lasagne.layers.MaxPool2DLayer(l_conv2, ds=(2, 2))
+    l_pool2 = MaxPool2DCCLayer(l_conv2, ds=(2, 2), dimshuffle=False)
+
+    l_pool2_bc01 = c01b_to_bc01(l_pool2)
 
     l_hidden1 = lasagne.layers.DenseLayer(
-        l_pool2,
+        l_pool2_bc01,
         num_units=256,
         nonlinearity=lasagne.nonlinearities.rectify,
         W=lasagne.init.GlorotUniform(),
