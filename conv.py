@@ -227,7 +227,7 @@ class NervanaConv(NervanaConvBase):
         if kern.type.ndim != 5:
             raise TypeError('kern must be 5D tensor')
 
-        broadcastable = [kern.type.broadcastable[-1], False, False, False, kern.type.broadcastable[-1]]
+        broadcastable = [kern.type.broadcastable[-1], False, False, False, img.type.broadcastable[-1]]
         return theano.Apply(self, [img, kern], [cuda.CudaNdarrayType(broadcastable)()])
 
     def make_thunk(self, node, storage_map, _, _2):
@@ -284,8 +284,6 @@ class NervanaConv(NervanaConvBase):
         bottom, weights = inp
         top, = grads
         top = gpu_contiguous(top)
-
-        import pdb; pdb.set_trace()
 
         d_bottom = NervanaConvGradI(self.padding, self.strides)(weights, top, bottom.shape[1:-1])
         d_weights = NervanaConvGradW(self.padding, self.strides)(bottom, top, weights.shape[1:-1])
