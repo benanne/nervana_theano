@@ -466,8 +466,8 @@ if __name__ == "__main__":
 
 
     print "backprop"
-    gi_cudnn = T.grad(y_cudnn**2, x)
-    gi_nervana = T.grad(y_nervana**2, x)
+    gi_cudnn = T.grad(T.mean(y_cudnn**2), x)
+    gi_nervana = T.grad(T.mean(y_nervana**2), x)
 
     gival_cudnn = np.array(gi_cudnn.eval())
     gival_nervana = np.array(gi_nervana.eval())
