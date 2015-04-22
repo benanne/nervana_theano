@@ -287,9 +287,6 @@ class NervanaConv(NervanaConvBase):
         top, = grads
         top = gpu_contiguous(top)
 
-        print "DEBUG: bottom shape: %s" % bottom.shape[1:-1]
-        print "DEBUG: weights shape: %s" % weights.shape[1:-1]
-
         d_bottom = NervanaConvGradI(self.padding, self.strides)(weights, top, bottom.shape[1:-1])
         d_weights = NervanaConvGradW(self.padding, self.strides)(bottom, top, weights.shape[1:-1])
 
@@ -297,7 +294,7 @@ class NervanaConv(NervanaConvBase):
 
 
 class NervanaConvGradI(NervanaConvBase):
-    def make_node(self, kern, topgrad, shape=None):
+    def make_node(self, kern, topgrad, shape):
         kern = cuda.basic_ops.as_cuda_ndarray_variable(kern)
         topgrad = cuda.basic_ops.as_cuda_ndarray_variable(topgrad)
 
@@ -368,7 +365,7 @@ class NervanaConvGradI(NervanaConvBase):
 
 
 class NervanaConvGradW(NervanaConvBase):
-    def make_node(self, img, topgrad, shape=None):
+    def make_node(self, img, topgrad, shape):
         img = cuda.basic_ops.as_cuda_ndarray_variable(img)
         topgrad = cuda.basic_ops.as_cuda_ndarray_variable(topgrad)
 
@@ -506,8 +503,13 @@ if __name__ == "__main__":
     import theano.tensor as T
     from theano.sandbox.cuda import dnn
 
-    input_shape = (128, 64, 96, 96)
-    filter_shape = (64, 64, 3, 3)
+    # input_shape = (128, 64, 96, 96)
+    # filter_shape = (64, 64, 3, 3)
+    # padding = (1, 1)
+    # strides = (1, 1)
+
+    input_shape = (32, 16, 48, 48)
+    filter_shape = (24, 16, 3, 3)
     padding = (1, 1)
     strides = (1, 1)
 
