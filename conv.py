@@ -483,7 +483,7 @@ if __name__ == "__main__":
     y_cudnn = dnn.dnn_conv(x, w, border_mode=padding, subsample=strides, conv_mode='cross')
     y_nervana = gpu_from_host(nervana_conv(x, w, padding=padding, strides=strides))
 
-    val_cudnn = y_cudnn.eval()
-    val_nervana = y_nervana.eval()
+    val_cudnn = np.array(y_cudnn.eval())
+    val_nervana = np.array(y_nervana.eval())
 
     assert np.allclose(val_cudnn, val_nervana)
