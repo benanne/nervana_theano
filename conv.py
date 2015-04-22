@@ -1,8 +1,8 @@
 import numpy as np
 import theano
 import theano.sandbox.cuda as cuda
-from theano.sandbox.cuda.basic_ops import (host_from_gpu, gpu_contiguous,
-                                           gpu_alloc_empty)
+from theano.sandbox.cuda.basic_ops import (host_from_gpu, gpu_from_host,
+                                           gpu_contiguous, gpu_alloc_empty)
 
 import theano.misc.pycuda_init
 
@@ -483,8 +483,8 @@ if __name__ == "__main__":
     x = theano.shared(np.random.normal(0, 1, input_shape).astype(theano.config.floatX))
     w = theano.shared(np.random.normal(0, 1, filter_shape).astype(theano.config.floatX))
 
-    y_cudnn = host_from_gpu(dnn.dnn_conv(x, w, border_mode=padding, subsample=strides, conv_mode='cross'))
-    y_nervana = nervana_conv(x, w, padding=padding, strides=strides)
+    y_cudnn = dnn.dnn_conv(x, w, border_mode=padding, subsample=strides, conv_mode='cross')
+    y_nervana = gpu_from_host(nervana_conv(x, w, padding=padding, strides=strides))
 
     val_cudnn = y_cudnn.eval()
     val_nervana = y_nervana.eval()
