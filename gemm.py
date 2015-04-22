@@ -42,6 +42,7 @@ class NervanaOp(cuda.GpuOp): # base class for shared code between scikits.cuda-b
         return theano.Apply(self, [inp], [self.output_type(inp)()])
 
 
+# TODO: gradient
 
 class NervanaDot(NervanaOp):
     __props__ = ('relu')

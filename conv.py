@@ -1,7 +1,8 @@
 import numpy as np
 import theano
 import theano.sandbox.cuda as cuda
-from theano.sandbox.cuda.basic_ops import host_from_gpu
+from theano.sandbox.cuda.basic_ops import (host_from_gpu, gpu_contiguous,
+                                           gpu_alloc_empty)
 
 import theano.misc.pycuda_init
 
@@ -206,7 +207,7 @@ def _conv(settings, A, B, C, alpha=1.0, relu=False, op="fprop"):
     kernel.prepared_call(*params, shared_size=shared)
 
 
-class NervanaConv(NervanaOp):
+class NervanaConvBase(NervanaOp):
     __props__ = ('padding', 'strides')
 
     def __init__(self, padding=(0, 0, 0), strides=(0, 0, 0)):
@@ -229,9 +230,14 @@ class NervanaConv(NervanaOp):
     def output_type(self, inp):
         return cuda.CudaNdarrayType(broadcastable=[False for _ in xrange(inp.ndim)])
 
+
+class NervanaConv(NervanaConvBase):
     def make_thunk(self, node, storage_map, _, _2):
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
+
+        settings_shapes = [None]
+        settings = [None]
 
         def thunk():
             input_shape = inputs[0][0].shape
@@ -244,13 +250,17 @@ class NervanaConv(NervanaOp):
 
             assert C_ == C
 
-            settings = _compute_kernel_settings(N, C, K,
-                                                D, H, W,
-                                                T, R, S,
-                                                pad_d, pad_h, pad_w,
-                                                str_d, str_h, str_w)
+            if (settings_shapes[0] is None or
+                settings_shapes[0] != (N, C, K, D, H, W, T, R, S)):
+                # shape change, recompute settings
+                settings_shapes[0] = (N, C, K, D, H, W, T, R, S)
+                settings[0] = _compute_kernel_settings(N, C, K,
+                                                       D, H, W,
+                                                       T, R, S,
+                                                       pad_d, pad_h, pad_w,
+                                                       str_d, str_h, str_w)
 
-            output_shape = (K,) + settings['output_size'] + (N,)
+            output_shape = (K,) + settings[0]['output_size'] + (N,)
 
             z = outputs[0]
 
@@ -262,7 +272,7 @@ class NervanaConv(NervanaOp):
             filters_nervana = to_gputensor(inputs[1][0])
             output_nervana = to_gputensor(z[0])
 
-            _conv(settings, input_nervana, filters_nervana, output_nervana,
+            _conv(settings[0], input_nervana, filters_nervana, output_nervana,
                   alpha=1.0, relu=False, op="fprop")
 
         thunk.inputs = inputs
@@ -271,17 +281,148 @@ class NervanaConv(NervanaOp):
 
         return thunk
 
+    def grad(self, inp, grads):
+        bottom, weights = inp
+        top, = grads
+        top = gpu_contiguous(top)
 
-# TODO: support border modes ('valid', 'same', 'full')
+        d_bottom = NervanaConvGradI(padding, strides)(weights, top, bottom.shape)
+        d_weights = NervanaConvGradW(padding, strides)(bottom, top, weights.shape)
+
+        return d_bottom, d_weights
+
+    # def grad(self, inp, grads):
+    #     bottom, weights = inp
+    #     top, = grads
+    #     top = gpu_contiguous(top)
+    #     d_bottom = GpuCorrMM_gradInputs(self.border_mode, self.subsample)(
+    #         weights, top, bottom.shape[-2:])
+    #     d_weights = GpuCorrMM_gradWeights(self.border_mode, self.subsample)(
+    #         bottom, top, weights.shape[-2:])
+    #     return d_bottom, d_weights
+
+    # def grad(self, inp, grads):
+    #     img, kerns, output, desc, alpha, beta = inp
+    #     top, = grads
+
+    #     top = gpu_contiguous(top)
+
+    #     d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
+    #     d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+    #     d_alpha = grad_not_implemented(self, 4, alpha)
+    #     d_beta = grad_not_implemented(self, 5, beta)
+
+    #     return [d_img * alpha, d_kerns * alpha, top * beta,
+    #             DisconnectedType()(), d_alpha, d_beta]
+
+
+class NervanaConvGradI(NervanaConvBase):
+    def make_thunk(self, node, storage_map, _, _2):
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        # def thunk():
+        #     input_shape = inputs[0][0].shape
+        #     filter_shape = inputs[1][0].shape
+
+        #     C , D, H, W, N = input_shape
+        #     C_, T, R, S, K = filter_shape
+        #     pad_d, pad_h, pad_w = self.padding
+        #     str_d, str_h, str_w = self.strides
+
+        #     assert C_ == C
+
+        #     settings = _compute_kernel_settings(N, C, K,
+        #                                         D, H, W,
+        #                                         T, R, S,
+        #                                         pad_d, pad_h, pad_w,
+        #                                         str_d, str_h, str_w)
+
+        #     output_shape = (K,) + settings['output_size'] + (N,)
+
+        #     z = outputs[0]
+
+        #     # only allocate if there is no previous allocation of the right size.
+        #     if z[0] is None or z[0].shape != output_shape:
+        #         z[0] = cuda.CudaNdarray.zeros(output_shape)
+
+        #     input_nervana = to_gputensor(inputs[0][0])
+        #     filters_nervana = to_gputensor(inputs[1][0])
+        #     output_nervana = to_gputensor(z[0])
+
+        #     _conv(settings, input_nervana, filters_nervana, output_nervana,
+        #           alpha=1.0, relu=False, op="fprop")
+
+        # thunk.inputs = inputs
+        # thunk.outputs = outputs
+        # thunk.lazy = False
+
+        # return thunk
+
+
+class NervanaConvGradW(NervanaConvBase):
+    def make_thunk(self, node, storage_map, _, _2):
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        # def thunk():
+        #     input_shape = inputs[0][0].shape
+        #     filter_shape = inputs[1][0].shape
+
+        #     C , D, H, W, N = input_shape
+        #     C_, T, R, S, K = filter_shape
+        #     pad_d, pad_h, pad_w = self.padding
+        #     str_d, str_h, str_w = self.strides
+
+        #     assert C_ == C
+
+        #     settings = _compute_kernel_settings(N, C, K,
+        #                                         D, H, W,
+        #                                         T, R, S,
+        #                                         pad_d, pad_h, pad_w,
+        #                                         str_d, str_h, str_w)
+
+        #     output_shape = (K,) + settings['output_size'] + (N,)
+
+        #     z = outputs[0]
+
+        #     # only allocate if there is no previous allocation of the right size.
+        #     if z[0] is None or z[0].shape != output_shape:
+        #         z[0] = cuda.CudaNdarray.zeros(output_shape)
+
+        #     input_nervana = to_gputensor(inputs[0][0])
+        #     filters_nervana = to_gputensor(inputs[1][0])
+        #     output_nervana = to_gputensor(z[0])
+
+        #     _conv(settings, input_nervana, filters_nervana, output_nervana,
+        #           alpha=1.0, relu=False, op="fprop")
+
+        # thunk.inputs = inputs
+        # thunk.outputs = outputs
+        # thunk.lazy = False
+
+        # return thunk
+
+
+
 # TODO: gradient ops
+#    * figure out how to get all the shape information. We may need to invert a bunch of formulas in _compute_kernel_settings which is extremely tedious.
+#      can it be avoided?
+#    TWO OPTIONS:
+#       - write the code to compute kernel settings from output size as well
+#       - require shape specification when the ops are initialized. That way everything is available at compile time. With Lasagne this is not a problem anyway.
+
 # TODO: test how much of a problem the dimshuffles are in a real network (does Theano eliminate them? It seems like it does for the cuda-convnet wrappers...)
 # TODO: optimize the thunk code a bit, recomputing the settings every time can be avoided by checking shapes.
 # TODO: implement an optimization to swap it in so conv2d can be used?
 # TODO: implement a Conv2DNervanaLayer for Lasagne?
+
+# TODO: support border modes ('valid', 'same', 'full')
+    # -> can't implement this in nervana_conv because the filter shapes are not known there. Only in the op itself, which is unfortunate.
 # TODO: built in relu support (with optimization to enable it?)
 
 
-def nervana_conv(input, filters, padding=0, strides=1, dimshuffle=True):
+def nervana_conv(input, filters, padding=None, strides=1, dimshuffle=True):
     ndim = input.ndim
     if ndim not in [3, 4, 5]:
         raise RuntimeError("inputs should be 3D, 4D or 5D")
