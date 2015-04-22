@@ -215,13 +215,10 @@ class NervanaConvBase(NervanaOp):
         self.strides = strides
 
     def make_node(self, inp1, inp2):
-        # inp1 = cuda.basic_ops.gpu_contiguous(
-        #    cuda.basic_ops.as_cuda_ndarray_variable(inp1))
-        # inp2 = cuda.basic_ops.gpu_contiguous(
-        #    cuda.basic_ops.as_cuda_ndarray_variable(inp2))
-
-        inp1 = cuda.basic_ops.as_cuda_ndarray_variable(inp1)
-        inp2 = cuda.basic_ops.as_cuda_ndarray_variable(inp2)
+        inp1 = cuda.basic_ops.gpu_contiguous(
+           cuda.basic_ops.as_cuda_ndarray_variable(inp1))
+        inp2 = cuda.basic_ops.gpu_contiguous(
+           cuda.basic_ops.as_cuda_ndarray_variable(inp2))
 
         assert inp1.dtype == "float32"
         assert inp2.dtype == "float32"
