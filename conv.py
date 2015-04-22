@@ -312,8 +312,6 @@ class NervanaConvGradI(NervanaConvBase):
 
         weights, top = inputs[:2]
         D, H, W = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
-        print "D,H,W",
-        print (D, H, W)
         bottom, = outputs
 
         settings_shapes = [None]
@@ -384,8 +382,6 @@ class NervanaConvGradW(NervanaConvBase):
 
         bottom, top = inputs[:2]
         T, R, S = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
-        print "T,R,S",
-        print (T,R,S)
         weights, = outputs
 
         settings_shapes = [None]
@@ -518,7 +514,8 @@ if __name__ == "__main__":
     w = theano.shared(np.random.normal(0, 1, filter_shape).astype(theano.config.floatX))
 
     y_cudnn = dnn.dnn_conv(x, w, border_mode=padding, subsample=strides, conv_mode='cross')
-    y_nervana = gpu_from_host(nervana_conv(x, w, padding=padding, strides=strides))
+    y_nervana_raw = nervana_conv(x, w, padding=padding, strides=strides)
+    y_nervana = gpu_from_host(y_nervana_raw)
 
     val_cudnn = np.array(y_cudnn.eval())
     val_nervana = np.array(y_nervana.eval())
@@ -538,7 +535,7 @@ if __name__ == "__main__":
 
     print "backprop inputs"
     gi_cudnn = T.grad(T.mean(y_cudnn**2), x)
-    gi_nervana = T.grad(T.mean(y_nervana**2), x)
+    gi_nervana = T.grad(T.mean(y_nervana_raw**2), x)
 
     gival_cudnn = np.array(gi_cudnn.eval())
     gival_nervana = np.array(gi_nervana.eval())
@@ -548,7 +545,7 @@ if __name__ == "__main__":
 
     print "backprop weights"
     gw_cudnn = T.grad(T.mean(y_cudnn**2), w)
-    gw_nervana = T.grad(T.mean(y_nervana**2), w)
+    gw_nervana = T.grad(T.mean(y_nervana_raw**2), w)
 
     gwval_cudnn = np.array(gw_cudnn.eval())
     gwval_nervana = np.array(gw_nervana.eval())
