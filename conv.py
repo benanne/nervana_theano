@@ -236,13 +236,13 @@ class NervanaConv(NervanaConvBase):
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
+        bottom, weights = inputs
+        top, = outputs
+
         settings_shapes = [None]
         settings = [None]
 
         def thunk():
-            bottom, weights = inputs
-            top, = outputs
-
             bottom_shape = bottom[0].shape
             weights_shape = weights[0].shape
 
@@ -263,11 +263,11 @@ class NervanaConv(NervanaConvBase):
                                                        pad_d, pad_h, pad_w,
                                                        str_d, str_h, str_w)
 
-            output_shape = (K,) + settings[0]['output_size'] + (N,)
+            top_shape = (K,) + settings[0]['output_size'] + (N,)
 
             # only allocate if there is no previous allocation of the right size.
-            if top[0] is None or top[0].shape != output_shape:
-                top[0] = cuda.CudaNdarray.zeros(output_shape)
+            if top[0] is None or top[0].shape != top_shape:
+                top[0] = cuda.CudaNdarray.zeros(top_shape)
 
             bottom_nervana = to_gputensor(bottom[0])
             weights_nervana = to_gputensor(weights[0])
@@ -308,6 +308,58 @@ class NervanaConvGradI(NervanaConvBase):
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False, False]
         return theano.Apply(self, [kern, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
+
+    def make_thunk(self, node, storage_map, _, _2):
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        weights, top = inputs[:2]
+        D, H, W = inputs[2:]
+        bottom, = outputs
+
+        settings_shapes = [None]
+        settings = [None]
+
+        def thunk():
+            weights_shape = weights[0].shape
+            top_shape = top[0].shape
+
+            C, T, R, S, K = weights_shape
+            K_, M, P, Q, N = top_shape
+            pad_d, pad_h, pad_w = self.padding
+            str_d, str_h, str_w = self.strides
+
+            assert K_ == K
+
+            if (settings_shapes[0] is None or
+                    settings_shapes[0] != (N, C, K, D, H, W, T, R, S)):
+                # shape change, recompute settings
+                settings_shapes[0] = (N, C, K, D, H, W, T, R, S)
+                settings[0] = _compute_kernel_settings(N, C, K,
+                                                       D, H, W,
+                                                       T, R, S,
+                                                       pad_d, pad_h, pad_w,
+                                                       str_d, str_h, str_w)
+
+            
+            bottom_shape = (C, D, H, W, N)
+
+            # only allocate if there is no previous allocation of the right size.
+            if bottom[0] is None or bottom[0].shape != bottom_shape:
+                bottom[0] = cuda.CudaNdarray.zeros(bottom_shape)
+
+            bottom_nervana = to_gputensor(bottom[0])
+            weights_nervana = to_gputensor(weights[0])
+            top_nervana = to_gputensor(top[0])
+
+            _conv(settings[0], weights_nervana, top_nervana, bottom_nervana,
+                  alpha=1.0, relu=False, op="bprop")
+
+        thunk.inputs = inputs
+        thunk.outputs = outputs
+        thunk.lazy = False
+
+        return thunk
 
  
 
@@ -390,6 +442,7 @@ if __name__ == "__main__":
     padding = (1, 1)
     strides = (1, 1)
 
+    print "fprop"
     x = theano.shared(np.random.normal(0, 1, input_shape).astype(theano.config.floatX))
     w = theano.shared(np.random.normal(0, 1, filter_shape).astype(theano.config.floatX))
 
@@ -401,6 +454,7 @@ if __name__ == "__main__":
 
     assert np.allclose(val_cudnn, val_nervana)
 
+    print "fprop without dimshuffle"
     x_nodimshuffle = theano.shared(x.get_value().transpose(1, 2, 3, 0)) # c01b
     w_nodimshuffle = theano.shared(w.get_value().transpose(1, 2, 3, 0)) # c01b
 
@@ -409,6 +463,17 @@ if __name__ == "__main__":
     val_nervana_nodimshuffle = np.array(y_nervana_nodimshuffle.eval()).transpose(3, 0, 1, 2)
 
     assert np.allclose(val_nervana, val_nervana_nodimshuffle)
+
+
+    print "backprop"
+    gi_cudnn = T.grad(y_cudnn**2, x)
+    gi_nervana = T.grad(y_nervana**2, x)
+
+    gival_cudnn = np.array(gi_cudnn.eval())
+    gival_nervana = np.array(gi_nervana.eval())
+
+    assert np.allclose(gival_cudnn, gival_nervana)
+
 
 
 # %timeit y_cudnn.eval()                -> 47.0 ms
