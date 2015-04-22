@@ -10,7 +10,7 @@ from mnist import create_iter_functions
 from mnist import train
 
 
-from lasagne.layer.cuda_convnet import bc01_to_c01b, c01b_to_bc01, MaxPool2DCCLayer
+from lasagne.layers.cuda_convnet import bc01_to_c01b, c01b_to_bc01, MaxPool2DCCLayer
 import layers
 
 
