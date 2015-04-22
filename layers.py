@@ -100,7 +100,7 @@ class NervanaConvLayer(lasagne.layers.Layer):
 
         output_size = []
         for i, f, s, p in zip(input_size, self.filter_size, self.stride, self.pad):
-            o = lasagne.layers.conv_output_length(i, f, s, 'pad', p)
+            o = lasagne.layers.conv.conv_output_length(i, f, s, 'pad', p)
             output_size.append(o)
 
         if self.dimshuffle:
