@@ -287,6 +287,9 @@ class NervanaConv(NervanaConvBase):
         top, = grads
         top = gpu_contiguous(top)
 
+        print "DEBUG: bottom shape: %s" % bottom.shape[1:-1]
+        print "DEBUG: weights shape: %s" % weights.shape[1:-1]
+
         d_bottom = NervanaConvGradI(self.padding, self.strides)(weights, top, bottom.shape[1:-1])
         d_weights = NervanaConvGradW(self.padding, self.strides)(bottom, top, weights.shape[1:-1])
 
