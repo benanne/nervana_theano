@@ -314,7 +314,7 @@ class NervanaConvGradI(NervanaConvBase):
         outputs = [storage_map[v] for v in node.outputs]
 
         weights, top = inputs[:2]
-        D, H, W = inputs[2:]
+        D, H, W = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
         bottom, = outputs
 
         settings_shapes = [None]
@@ -385,7 +385,7 @@ class NervanaConvGradW(NervanaConvBase):
         outputs = [storage_map[v] for v in node.outputs]
 
         bottom, top = inputs[:2]
-        T, R, S = inputs[2:]
+        T, R, S = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
         weights, = outputs
 
         settings_shapes = [None]
