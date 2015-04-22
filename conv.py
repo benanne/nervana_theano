@@ -215,10 +215,13 @@ class NervanaConvBase(NervanaOp):
         self.strides = strides
 
     def make_node(self, inp1, inp2):
-        inp1 = cuda.basic_ops.gpu_contiguous(
-           cuda.basic_ops.as_cuda_ndarray_variable(inp1))
-        inp2 = cuda.basic_ops.gpu_contiguous(
-           cuda.basic_ops.as_cuda_ndarray_variable(inp2))
+        # inp1 = cuda.basic_ops.gpu_contiguous(
+        #    cuda.basic_ops.as_cuda_ndarray_variable(inp1))
+        # inp2 = cuda.basic_ops.gpu_contiguous(
+        #    cuda.basic_ops.as_cuda_ndarray_variable(inp2))
+
+        inp1 = cuda.basic_ops.as_cuda_ndarray_variable(inp1)
+        inp2 = cuda.basic_ops.as_cuda_ndarray_variable(inp2)
 
         assert inp1.dtype == "float32"
         assert inp2.dtype == "float32"
@@ -286,37 +289,31 @@ class NervanaConv(NervanaConvBase):
         top, = grads
         top = gpu_contiguous(top)
 
-        d_bottom = NervanaConvGradI(padding, strides)(weights, top, bottom.shape)
-        d_weights = NervanaConvGradW(padding, strides)(bottom, top, weights.shape)
+        d_bottom = NervanaConvGradI(padding, strides)(weights, top, bottom.shape[1:-1])
+        d_weights = NervanaConvGradW(padding, strides)(bottom, top, weights.shape[1:-1])
 
         return d_bottom, d_weights
 
-    # def grad(self, inp, grads):
-    #     bottom, weights = inp
-    #     top, = grads
-    #     top = gpu_contiguous(top)
-    #     d_bottom = GpuCorrMM_gradInputs(self.border_mode, self.subsample)(
-    #         weights, top, bottom.shape[-2:])
-    #     d_weights = GpuCorrMM_gradWeights(self.border_mode, self.subsample)(
-    #         bottom, top, weights.shape[-2:])
-    #     return d_bottom, d_weights
-
-    # def grad(self, inp, grads):
-    #     img, kerns, output, desc, alpha, beta = inp
-    #     top, = grads
-
-    #     top = gpu_contiguous(top)
-
-    #     d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
-    #     d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
-    #     d_alpha = grad_not_implemented(self, 4, alpha)
-    #     d_beta = grad_not_implemented(self, 5, beta)
-
-    #     return [d_img * alpha, d_kerns * alpha, top * beta,
-    #             DisconnectedType()(), d_alpha, d_beta]
-
 
 class NervanaConvGradI(NervanaConvBase):
+    # def make_node(self, kern, topgrad, shape=None):
+    #     kern = cuda.basic_ops.as_cuda_ndarray_variable(kern)
+    #     topgrad = cuda.basic_ops.as_cuda_ndarray_variable(topgrad)
+
+    #     # TODO adapt
+
+    #     if kern.type.ndim != 4:
+    #         raise TypeError('kern must be 4D tensor')
+    #     if topgrad.type.ndim != 4:
+    #         raise TypeError('topgrad must be 4D tensor')
+    #     if self.subsample != (1, 1) and shape is None:
+    #         raise ValueError('shape must be given if subsample != (1, 1)')
+    #     height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
+
+    #     broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+    #                      False, False]
+    #     return Apply(self, [kern, topgrad] + height_width, [CudaNdarrayType(broadcastable)()])
+
     def make_thunk(self, node, storage_map, _, _2):
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
