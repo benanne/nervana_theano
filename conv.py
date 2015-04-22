@@ -429,21 +429,13 @@ class NervanaConvGradW(NervanaConvBase):
         return thunk
 
 
-
-# TODO: gradient ops
-#    * figure out how to get all the shape information. We may need to invert a bunch of formulas in _compute_kernel_settings which is extremely tedious.
-#      can it be avoided?
-#    TWO OPTIONS:
-#       - write the code to compute kernel settings from output size as well
-#       - require shape specification when the ops are initialized. That way everything is available at compile time. With Lasagne this is not a problem anyway.
-
-# TODO: test how much of a problem the dimshuffles are in a real network (does Theano eliminate them? It seems like it does for the cuda-convnet wrappers...)
-# TODO: optimize the thunk code a bit, recomputing the settings every time can be avoided by checking shapes.
-# TODO: implement an optimization to swap it in so conv2d can be used?
-# TODO: implement a Conv2DNervanaLayer for Lasagne?
-
 # TODO: support border modes ('valid', 'same', 'full')
     # -> can't implement this in nervana_conv because the filter shapes are not known there. Only in the op itself, which is unfortunate.
+# TODO: implement a Conv2DNervanaLayer for Lasagne (with dimshuffle setting)
+
+# TODO: test how much of a problem the dimshuffles are in a real network (does Theano eliminate them? It seems like it does for the cuda-convnet wrappers...)
+# TODO: implement an optimization to swap it in so T.nnet.conv.conv2d can be used?
+
 # TODO: built in relu support (with optimization to enable it?)
 
 
