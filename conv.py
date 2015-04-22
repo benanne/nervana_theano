@@ -311,7 +311,6 @@ class NervanaConvGradI(NervanaConvBase):
         outputs = [storage_map[v] for v in node.outputs]
 
         weights, top = inputs[:2]
-        D, H, W = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
         bottom, = outputs
 
         settings_shapes = [None]
@@ -320,6 +319,8 @@ class NervanaConvGradI(NervanaConvBase):
         def thunk():
             weights_shape = weights[0].shape
             top_shape = top[0].shape
+
+            D, H, W = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
 
             C, T, R, S, K = weights_shape
             K_, M, P, Q, N = top_shape
@@ -379,7 +380,6 @@ class NervanaConvGradW(NervanaConvBase):
         outputs = [storage_map[v] for v in node.outputs]
 
         bottom, top = inputs[:2]
-        T, R, S = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
         weights, = outputs
 
         settings_shapes = [None]
@@ -388,6 +388,8 @@ class NervanaConvGradW(NervanaConvBase):
         def thunk():
             bottom_shape = bottom[0].shape
             top_shape = top[0].shape
+
+            T, R, S = int(inputs[2][0]), int(inputs[3][0]), int(inputs[4][0])
 
             C , D, H, W, N = bottom_shape
             K, M, P, Q, N_ = top_shape
