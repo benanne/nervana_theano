@@ -365,7 +365,73 @@ class NervanaConvGradI(NervanaConvBase):
 
 
 class NervanaConvGradW(NervanaConvBase):
-    pass
+    def make_node(self, img, topgrad, shape=None):
+        img = cuda.basic_ops.as_cuda_ndarray_variable(img)
+        topgrad = cuda.basic_ops.as_cuda_ndarray_variable(topgrad)
+
+        if img.type.ndim != 5:
+            raise TypeError('img must be 5D tensor')
+        if topgrad.type.ndim != 5:
+            raise TypeError('topgrad must be 5D tensor')
+
+        depth_height_width = [shape[0], shape[1], shape[2]]
+
+        broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1],
+                         False, False, False]
+        return theano.Apply(self, [img, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
+
+    def make_thunk(self, node, storage_map, _, _2):
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        bottom, top = inputs[:2]
+        T, R, S = inputs[2:]
+        weights, = outputs
+
+        settings_shapes = [None]
+        settings = [None]
+
+        def thunk():
+            bottom_shape = bottom[0].shape
+            top_shape = top[0].shape
+
+            C , D, H, W, N = bottom_shape
+            K, M, P, Q, N_ = top_shape
+            pad_d, pad_h, pad_w = self.padding
+            str_d, str_h, str_w = self.strides
+
+            assert N_ == N
+
+            if (settings_shapes[0] is None or
+                    settings_shapes[0] != (N, C, K, D, H, W, T, R, S)):
+                # shape change, recompute settings
+                settings_shapes[0] = (N, C, K, D, H, W, T, R, S)
+                settings[0] = _compute_kernel_settings(N, C, K,
+                                                       D, H, W,
+                                                       T, R, S,
+                                                       pad_d, pad_h, pad_w,
+                                                       str_d, str_h, str_w)
+
+            
+            weights_shape = (C, T, R, S, K)
+
+            # only allocate if there is no previous allocation of the right size.
+            if weights[0] is None or weights[0].shape != weights_shape:
+                weights[0] = cuda.CudaNdarray.zeros(weights_shape)
+
+            bottom_nervana = to_gputensor(bottom[0])
+            weights_nervana = to_gputensor(weights[0])
+            top_nervana = to_gputensor(top[0])
+
+            _conv(settings[0], bottom_nervana, top_nervana, weights_nervana,
+                  alpha=1.0, relu=False, op="updat")
+
+        thunk.inputs = inputs
+        thunk.outputs = outputs
+        thunk.lazy = False
+
+        return thunk
+
 
 
 # TODO: gradient ops
@@ -465,7 +531,7 @@ if __name__ == "__main__":
     assert np.allclose(val_nervana, val_nervana_nodimshuffle)
 
 
-    print "backprop"
+    print "backprop inputs"
     gi_cudnn = T.grad(T.mean(y_cudnn**2), x)
     gi_nervana = T.grad(T.mean(y_nervana**2), x)
 
@@ -473,6 +539,16 @@ if __name__ == "__main__":
     gival_nervana = np.array(gi_nervana.eval())
 
     assert np.allclose(gival_cudnn, gival_nervana)
+
+
+    print "backprop weights"
+    gw_cudnn = T.grad(T.mean(y_cudnn**2), w)
+    gw_nervana = T.grad(T.mean(y_nervana**2), w)
+
+    gwval_cudnn = np.array(gw_cudnn.eval())
+    gwval_nervana = np.array(gw_nervana.eval())
+
+    assert np.allclose(gwval_cudnn, gwval_nervana)
 
 
 
