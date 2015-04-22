@@ -456,8 +456,6 @@ class NervanaConvGradW(NervanaConvBase):
         return thunk
 
 
-# TODO: support border modes ('valid', 'same', 'full')
-    # -> can't implement this in nervana_conv because the filter shapes are not known there. Only in the op itself, which is unfortunate.
 # TODO: implement a Conv2DNervanaLayer for Lasagne (with dimshuffle setting)
 
 # TODO: test how much of a problem the dimshuffles are in a real network (does Theano eliminate them? It seems like it does for the cuda-convnet wrappers...)
