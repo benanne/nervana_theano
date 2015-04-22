@@ -246,7 +246,16 @@ class NervanaConv(NervanaConvBase):
 
             C , D, H, W, N = bottom_shape
             C_, T, R, S, K = weights_shape
-            pad_d, pad_h, pad_w = self.padding
+
+            if self.padding == 'valid':
+                pad_d, pad_h, pad_w = 0, 0, 0
+            elif self.padding == 'full':
+                pad_d, pad_h, pad_w = T - 1, R - 1, S - 1
+            elif self.padding == 'half':
+                pad_d, pad_h, pad_w = T // 2, R // 2, S // 2
+            else:
+                pad_d, pad_h, pad_w = self.padding
+
             str_d, str_h, str_w = self.strides
 
             assert C_ == C
@@ -324,7 +333,16 @@ class NervanaConvGradI(NervanaConvBase):
 
             C, T, R, S, K = weights_shape
             K_, M, P, Q, N = top_shape
-            pad_d, pad_h, pad_w = self.padding
+
+            if self.padding == 'valid':
+                pad_d, pad_h, pad_w = 0, 0, 0
+            elif self.padding == 'full':
+                pad_d, pad_h, pad_w = T - 1, R - 1, S - 1
+            elif self.padding == 'half':
+                pad_d, pad_h, pad_w = T // 2, R // 2, S // 2
+            else:
+                pad_d, pad_h, pad_w = self.padding
+
             str_d, str_h, str_w = self.strides
 
             assert K_ == K
@@ -393,7 +411,16 @@ class NervanaConvGradW(NervanaConvBase):
 
             C , D, H, W, N = bottom_shape
             K, M, P, Q, N_ = top_shape
-            pad_d, pad_h, pad_w = self.padding
+
+            if self.padding == 'valid':
+                pad_d, pad_h, pad_w = 0, 0, 0
+            elif self.padding == 'full':
+                pad_d, pad_h, pad_w = T - 1, R - 1, S - 1
+            elif self.padding == 'half':
+                pad_d, pad_h, pad_w = T // 2, R // 2, S // 2
+            else:
+                pad_d, pad_h, pad_w = self.padding
+
             str_d, str_h, str_w = self.strides
 
             assert N_ == N
@@ -450,11 +477,16 @@ def nervana_conv(input, filters, padding=None, strides=1, dimshuffle=True):
     cdim = ndim - 2  # actual convolution dimensionality
 
     # modify padding and strides tuples for 3D convolution
-    if isinstance(padding, int):
-        padding = (padding,) * cdim
-    elif isinstance(padding, tuple):
-        assert len(padding) == cdim
-    padding = ((0,) * (3 - cdim)) + padding
+    if isinstance(padding, str):
+        if padding == "same":
+            padding = "half"
+        assert padding in ['full', 'valid', 'half']
+    else:
+        if isinstance(padding, int):
+            padding = (padding,) * cdim
+        elif isinstance(padding, tuple):
+            assert len(padding) == cdim
+        padding = ((0,) * (3 - cdim)) + padding
 
     if isinstance(strides, int):
         strides = (strides,) * cdim
@@ -508,7 +540,7 @@ if __name__ == "__main__":
 
     input_shape = (128, 8, 96, 96)
     filter_shape = (64, 8, 3, 3)
-    padding = (1, 1)
+    padding = "valid" # (1, 1)
     strides = (1, 1)
 
     # input_shape = (32, 16, 48, 48)
