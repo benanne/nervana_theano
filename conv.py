@@ -240,18 +240,21 @@ class NervanaConv(NervanaConvBase):
         settings = [None]
 
         def thunk():
-            input_shape = inputs[0][0].shape
-            filter_shape = inputs[1][0].shape
+            bottom, weights = inputs
+            top, = outputs
 
-            C , D, H, W, N = input_shape
-            C_, T, R, S, K = filter_shape
+            bottom_shape = bottom[0].shape
+            weights_shape = weights[0].shape
+
+            C , D, H, W, N = bottom_shape
+            C_, T, R, S, K = weights_shape
             pad_d, pad_h, pad_w = self.padding
             str_d, str_h, str_w = self.strides
 
             assert C_ == C
 
             if (settings_shapes[0] is None or
-                settings_shapes[0] != (N, C, K, D, H, W, T, R, S)):
+                    settings_shapes[0] != (N, C, K, D, H, W, T, R, S)):
                 # shape change, recompute settings
                 settings_shapes[0] = (N, C, K, D, H, W, T, R, S)
                 settings[0] = _compute_kernel_settings(N, C, K,
@@ -262,17 +265,15 @@ class NervanaConv(NervanaConvBase):
 
             output_shape = (K,) + settings[0]['output_size'] + (N,)
 
-            z = outputs[0]
-
             # only allocate if there is no previous allocation of the right size.
-            if z[0] is None or z[0].shape != output_shape:
-                z[0] = cuda.CudaNdarray.zeros(output_shape)
+            if top[0] is None or top[0].shape != output_shape:
+                top[0] = cuda.CudaNdarray.zeros(output_shape)
 
-            input_nervana = to_gputensor(inputs[0][0])
-            filters_nervana = to_gputensor(inputs[1][0])
-            output_nervana = to_gputensor(z[0])
+            bottom_nervana = to_gputensor(bottom[0])
+            weights_nervana = to_gputensor(weights[0])
+            top_nervana = to_gputensor(top[0])
 
-            _conv(settings[0], input_nervana, filters_nervana, output_nervana,
+            _conv(settings[0], bottom_nervana, weights_nervana, top_nervana,
                   alpha=1.0, relu=False, op="fprop")
 
         thunk.inputs = inputs
@@ -293,110 +294,26 @@ class NervanaConv(NervanaConvBase):
 
 
 class NervanaConvGradI(NervanaConvBase):
-    # def make_node(self, kern, topgrad, shape=None):
-    #     kern = cuda.basic_ops.as_cuda_ndarray_variable(kern)
-    #     topgrad = cuda.basic_ops.as_cuda_ndarray_variable(topgrad)
+    def make_node(self, kern, topgrad, shape=None):
+        kern = cuda.basic_ops.as_cuda_ndarray_variable(kern)
+        topgrad = cuda.basic_ops.as_cuda_ndarray_variable(topgrad)
 
-    #     # TODO adapt
+        if kern.type.ndim != 5:
+            raise TypeError('kern must be 5D tensor')
+        if topgrad.type.ndim != 5:
+            raise TypeError('topgrad must be 5D tensor')
 
-    #     if kern.type.ndim != 4:
-    #         raise TypeError('kern must be 4D tensor')
-    #     if topgrad.type.ndim != 4:
-    #         raise TypeError('topgrad must be 4D tensor')
-    #     if self.subsample != (1, 1) and shape is None:
-    #         raise ValueError('shape must be given if subsample != (1, 1)')
-    #     height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
+        depth_height_width = [shape[0], shape[1], shape[2]]
 
-    #     broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
-    #                      False, False]
-    #     return Apply(self, [kern, topgrad] + height_width, [CudaNdarrayType(broadcastable)()])
+        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+                         False, False, False]
+        return theano.Apply(self, [kern, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
 
-    def make_thunk(self, node, storage_map, _, _2):
-        inputs = [storage_map[v] for v in node.inputs]
-        outputs = [storage_map[v] for v in node.outputs]
-
-        # def thunk():
-        #     input_shape = inputs[0][0].shape
-        #     filter_shape = inputs[1][0].shape
-
-        #     C , D, H, W, N = input_shape
-        #     C_, T, R, S, K = filter_shape
-        #     pad_d, pad_h, pad_w = self.padding
-        #     str_d, str_h, str_w = self.strides
-
-        #     assert C_ == C
-
-        #     settings = _compute_kernel_settings(N, C, K,
-        #                                         D, H, W,
-        #                                         T, R, S,
-        #                                         pad_d, pad_h, pad_w,
-        #                                         str_d, str_h, str_w)
-
-        #     output_shape = (K,) + settings['output_size'] + (N,)
-
-        #     z = outputs[0]
-
-        #     # only allocate if there is no previous allocation of the right size.
-        #     if z[0] is None or z[0].shape != output_shape:
-        #         z[0] = cuda.CudaNdarray.zeros(output_shape)
-
-        #     input_nervana = to_gputensor(inputs[0][0])
-        #     filters_nervana = to_gputensor(inputs[1][0])
-        #     output_nervana = to_gputensor(z[0])
-
-        #     _conv(settings, input_nervana, filters_nervana, output_nervana,
-        #           alpha=1.0, relu=False, op="fprop")
-
-        # thunk.inputs = inputs
-        # thunk.outputs = outputs
-        # thunk.lazy = False
-
-        # return thunk
+ 
 
 
 class NervanaConvGradW(NervanaConvBase):
-    def make_thunk(self, node, storage_map, _, _2):
-        inputs = [storage_map[v] for v in node.inputs]
-        outputs = [storage_map[v] for v in node.outputs]
-
-        # def thunk():
-        #     input_shape = inputs[0][0].shape
-        #     filter_shape = inputs[1][0].shape
-
-        #     C , D, H, W, N = input_shape
-        #     C_, T, R, S, K = filter_shape
-        #     pad_d, pad_h, pad_w = self.padding
-        #     str_d, str_h, str_w = self.strides
-
-        #     assert C_ == C
-
-        #     settings = _compute_kernel_settings(N, C, K,
-        #                                         D, H, W,
-        #                                         T, R, S,
-        #                                         pad_d, pad_h, pad_w,
-        #                                         str_d, str_h, str_w)
-
-        #     output_shape = (K,) + settings['output_size'] + (N,)
-
-        #     z = outputs[0]
-
-        #     # only allocate if there is no previous allocation of the right size.
-        #     if z[0] is None or z[0].shape != output_shape:
-        #         z[0] = cuda.CudaNdarray.zeros(output_shape)
-
-        #     input_nervana = to_gputensor(inputs[0][0])
-        #     filters_nervana = to_gputensor(inputs[1][0])
-        #     output_nervana = to_gputensor(z[0])
-
-        #     _conv(settings, input_nervana, filters_nervana, output_nervana,
-        #           alpha=1.0, relu=False, op="fprop")
-
-        # thunk.inputs = inputs
-        # thunk.outputs = outputs
-        # thunk.lazy = False
-
-        # return thunk
-
+    pass
 
 
 # TODO: gradient ops
@@ -492,3 +409,8 @@ if __name__ == "__main__":
     val_nervana_nodimshuffle = np.array(y_nervana_nodimshuffle.eval()).transpose(3, 0, 1, 2)
 
     assert np.allclose(val_nervana, val_nervana_nodimshuffle)
+
+
+# %timeit y_cudnn.eval()                -> 47.0 ms
+# %timeit y_nervana.eval()              -> 61.3 ms
+# %timeit y_nervana_nodimshuffle.eval() -> 23.6 ms
