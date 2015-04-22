@@ -285,8 +285,8 @@ class NervanaConv(NervanaConvBase):
         top, = grads
         top = gpu_contiguous(top)
 
-        d_bottom = NervanaConvGradI(self.padding, self.strides)(weights, top, bottom.shape)
-        d_weights = NervanaConvGradW(self.padding, self.strides)(bottom, top, weights.shape)
+        d_bottom = NervanaConvGradI(self.padding, self.strides)(weights, top, bottom.shape[1:-1])
+        d_weights = NervanaConvGradW(self.padding, self.strides)(bottom, top, weights.shape[1:-1])
 
         return d_bottom, d_weights
 
@@ -301,7 +301,7 @@ class NervanaConvGradI(NervanaConvBase):
         if topgrad.type.ndim != 5:
             raise TypeError('topgrad must be 5D tensor')
 
-        depth_height_width = [shape[1], shape[2], shape[3]]
+        depth_height_width = [shape[0], shape[1], shape[2]]
 
         broadcastable = [kern.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[-1]]
         return theano.Apply(self, [kern, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
@@ -369,7 +369,7 @@ class NervanaConvGradW(NervanaConvBase):
         if topgrad.type.ndim != 5:
             raise TypeError('topgrad must be 5D tensor')
 
-        depth_height_width = [shape[1], shape[2], shape[3]]
+        depth_height_width = [shape[0], shape[1], shape[2]]
 
         broadcastable = [img.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[0]]
         return theano.Apply(self, [img, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
