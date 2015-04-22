@@ -358,8 +358,6 @@ class NervanaConvGradI(NervanaConvBase):
 
         return thunk
 
- 
-
 
 class NervanaConvGradW(NervanaConvBase):
     def make_node(self, img, topgrad, shape):
@@ -504,16 +502,10 @@ if __name__ == "__main__":
     # padding = (1, 1)
     # strides = (1, 1)
 
-    # input_shape = (32, 16, 48, 48)
-    # filter_shape = (24, 16, 3, 3)
-    # padding = (1, 1)
-    # strides = (1, 1)
-
-    input_shape = (32, 16, 12, 12, 12)
-    filter_shape = (8, 16, 3, 3, 3)
-    padding = (1, 1, 1)
-    strides = (1, 1, 1)
-
+    input_shape = (32, 16, 48, 48)
+    filter_shape = (24, 16, 3, 3)
+    padding = (1, 1)
+    strides = (1, 1)
 
     print "fprop"
     x = theano.shared(np.random.normal(0, 1, input_shape).astype(theano.config.floatX))
@@ -529,12 +521,12 @@ if __name__ == "__main__":
     assert np.allclose(val_cudnn, val_nervana)
 
     print "fprop without dimshuffle"
-    x_nodimshuffle = theano.shared(x.get_value().transpose(1, 2, 3, 4, 0)) # c012b
-    w_nodimshuffle = theano.shared(w.get_value().transpose(1, 2, 3, 4, 0)) # c012b
+    x_nodimshuffle = theano.shared(x.get_value().transpose(1, 2, 3, 0)) # c01b
+    w_nodimshuffle = theano.shared(w.get_value().transpose(1, 2, 3, 0)) # c01b
 
     y_nervana_nodimshuffle = gpu_from_host(nervana_conv(x_nodimshuffle, w_nodimshuffle, padding=padding, strides=strides, dimshuffle=False))
 
-    val_nervana_nodimshuffle = np.array(y_nervana_nodimshuffle.eval()).transpose(4, 0, 1, 2, 3)
+    val_nervana_nodimshuffle = np.array(y_nervana_nodimshuffle.eval()).transpose(3, 0, 1, 2)
 
     assert np.allclose(val_nervana, val_nervana_nodimshuffle)
 
