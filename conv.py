@@ -227,7 +227,8 @@ class NervanaConv(NervanaConvBase):
         if kern.type.ndim != 5:
             raise TypeError('kern must be 5D tensor')
 
-        broadcastable = [kern.type.broadcastable[-1], False, False, False, img.type.broadcastable[-1]]
+        # broadcastable = [kern.type.broadcastable[-1], False, False, False, img.type.broadcastable[-1]]
+        broadcastable = [False] * 5
         return theano.Apply(self, [img, kern], [cuda.CudaNdarrayType(broadcastable)()])
 
     def make_thunk(self, node, storage_map, _, _2):
@@ -303,7 +304,8 @@ class NervanaConvGradI(NervanaConvBase):
 
         depth_height_width = [shape[0], shape[1], shape[2]]
 
-        broadcastable = [kern.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[-1]]
+        # broadcastable = [kern.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[-1]]
+        broadcastable = [False] * 5
         return theano.Apply(self, [kern, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
 
     def make_thunk(self, node, storage_map, _, _2):
@@ -373,7 +375,8 @@ class NervanaConvGradW(NervanaConvBase):
 
         depth_height_width = [shape[0], shape[1], shape[2]]
 
-        broadcastable = [img.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[0]]
+        # broadcastable = [img.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[0]]
+        broadcastable = [False] * 5
         return theano.Apply(self, [img, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
 
     def make_thunk(self, node, storage_map, _, _2):
