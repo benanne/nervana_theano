@@ -468,27 +468,41 @@ def nervana_conv(input, filters, padding=None, strides=1, dimshuffle=True):
         assert len(strides) == cdim
     strides = ((1,) * (3 - cdim)) + strides
 
-    if dimshuffle:  # convert from batch_size_first to batch_size_last and 3D in one go
-        axes = [1] + (['x'] * (5 - ndim)) + range(2, ndim) + [0]
-    else:  # convert to 3D only
-        axes = [0] + (['x'] * (5 - ndim)) + range(1, ndim)
-    
-    input = input.dimshuffle(*axes)
-    filters = filters.dimshuffle(*axes)
+    if dimshuffle:
+        axes = range(1, ndim) + [0]
+        input = input.dimshuffle(*axes)
+        filters = filters.dimshuffle(*axes)
+
+    # go from ndim dimensions to 5 dimensions by 1-padding
+    if ndim == 3:
+        new_input_shape = (input.shape[0], 1, 1, input.shape[1], input.shape[2])
+        new_filters_shape = (filters.shape[0], 1, 1, filters.shape[1], filters.shape[2])
+    elif ndim == 4:
+        new_input_shape = (input.shape[0], 1, input.shape[1], input.shape[2], input.shape[3])
+        new_filters_shape = (filters.shape[0], 1, filters.shape[1], filters.shape[2], filters.shape[3])
+    elif ndim == 5:
+        new_input_shape = input.shape
+        new_filters_shape = filters.shape
+
+    input = input.reshape(new_input_shape)
+    filters = filters.reshape(new_filters_shape)
     
     op = NervanaConv(padding=padding, strides=strides)
     out = op(input, filters)
 
-    if dimshuffle:  # convert from batch_size_last to batch_size_first again
-        axes2 = [4] + range(4)
-        out = out.dimshuffle(axes2)
-        idcs = [slice(None), slice(None)] + ([0] * (5 - ndim))
-        idcs = tuple(idcs)
-        out = out[idcs]
-    else:
-        idcs = [slice(None)] + ([0] * (5 - ndim))
-        idcs = tuple(idcs)
-        out = out[idcs]
+    # go from 5 dimensions back to ndim dimensions by removing the added ones
+    if ndim == 3:
+        new_out_shape = (out.shape[0], out.shape[3], out.shape[4])
+    elif ndim == 4:
+        new_out_shape = (out.shape[0], out.shape[2], out.shape[3], out.shape[4])
+    elif ndim == 5:
+        new_out_shape = out.shape
+
+    out = out.reshape(new_out_shape)
+
+    if dimshuffle:
+        axes = [ndim - 1] + range(0, ndim - 1)
+        out = out.dimshuffle(*axes)
 
     return out
 
