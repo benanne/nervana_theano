@@ -214,24 +214,22 @@ class NervanaConvBase(NervanaOp):
         self.padding = padding
         self.strides = strides
 
-    def make_node(self, inp1, inp2):
-        inp1 = cuda.basic_ops.gpu_contiguous(
-           cuda.basic_ops.as_cuda_ndarray_variable(inp1))
-        inp2 = cuda.basic_ops.gpu_contiguous(
-           cuda.basic_ops.as_cuda_ndarray_variable(inp2))
-
-        assert inp1.dtype == "float32"
-        assert inp2.dtype == "float32"
-        assert inp1.ndim in [3, 4, 5]
-        assert inp1.ndim == inp2.ndim
-
-        return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
-
-    def output_type(self, inp):
-        return cuda.CudaNdarrayType(broadcastable=[False for _ in xrange(inp.ndim)])
-
 
 class NervanaConv(NervanaConvBase):
+    def make_node(self, img, kern):
+        img = cuda.basic_ops.gpu_contiguous(
+            cuda.basic_ops.as_cuda_ndarray_variable(img))
+        kern = cuda.basic_ops.gpu_contiguous(
+            cuda.basic_ops.as_cuda_ndarray_variable(kern))
+
+        if img.type.ndim != 5:
+            raise TypeError('img must be 5D tensor')
+        if kern.type.ndim != 5:
+            raise TypeError('kern must be 5D tensor')
+
+        broadcastable = [kern.type.broadcastable[-1], False, False, False, kern.type.broadcastable[-1]]
+        return theano.Apply(self, [img, kern], [cuda.CudaNdarrayType(broadcastable)()])
+
     def make_thunk(self, node, storage_map, _, _2):
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
@@ -307,8 +305,7 @@ class NervanaConvGradI(NervanaConvBase):
 
         depth_height_width = [shape[0], shape[1], shape[2]]
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
-                         False, False, False]
+        broadcastable = [kern.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[-1]]
         return theano.Apply(self, [kern, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
 
     def make_thunk(self, node, storage_map, _, _2):
@@ -378,8 +375,7 @@ class NervanaConvGradW(NervanaConvBase):
 
         depth_height_width = [shape[0], shape[1], shape[2]]
 
-        broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1],
-                         False, False, False]
+        broadcastable = [img.type.broadcastable[0], False, False, False, topgrad.type.broadcastable[0]]
         return theano.Apply(self, [img, topgrad] + depth_height_width, [cuda.CudaNdarrayType(broadcastable)()])
 
     def make_thunk(self, node, storage_map, _, _2):
