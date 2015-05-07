@@ -27,7 +27,7 @@ prod_nervana = nervana_dot(x, y)
 
 The Nervana convolution kernels support 1D, 2D and 3D convolutions. They use **c01b** or **batch-size-last** axis ordering, like the cuda-convnet kernels. This is different form Theano's default **bc01** or **batch-size-first** ordering.
 
-Because of this, the wrapper does not provide a drop-in replacement for `theano.tensor.nnet.conv.conv2d`. Some dimshuffling is required.
+The `nervana_conv` wrapper function adds the necessary dimshuffles by default, so you can use it as a drop-in replacement for `theano.tensor.nnet.conv.conv2d`. However, this may degrade performance, so this behaviour can be turned off by passing the keyword argument `dimshuffle=False`. In that case, you will need to provide inputs with axes in **c01b** order.
 
 You can use the convolution kernels in Theano as follows:
 ```
@@ -37,14 +37,17 @@ from nervana_theano.conv import nervana_conv
 x = T.tensor4('x')
 w = T.tensor4('w')
 
-x_shuffled = x.dimshuffle(1, 2, 3, 0) # batch size last
-w_shuffled = w.dimshuffle(1, 2, 3, 0) # batch size last
-
 border_mode = 'valid' # or 'full', or...
 # for nervana_conv this can also be a tuple of integers
 
 conv_theano = T.nnet.conv.conv2d(x, w, border_mode=border_mode, subsample=strides)
-conv_nervana = nervana_conv(x_shuffled, w_shuffled, padding=border_mode, strides=strides)
+conv_nervana = nervana_conv(x, w, padding=border_mode, strides=strides)
+
+# or with manual shuffling:
+x_shuffled = x.dimshuffle(1, 2, 3, 0) # batch size last
+w_shuffled = w.dimshuffle(1, 2, 3, 0) # batch size last
+
+conv_nervana = nervana_conv(x_shuffled, w_shuffled, padding=border_mode, strides=strides, dimshuffle=False)
 ```
 
 Note that `nervana_conv` will perform a 1D, 2D or 3D convolution depending on whether the inputs are 3D, 4D or 5D tensors.
