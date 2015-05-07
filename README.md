@@ -44,7 +44,7 @@ border_mode = 'valid' # or 'full', or...
 # for nervana_conv this can also be a tuple of integers
 
 conv_theano = T.nnet.conv.conv2d(x, w, border_mode=border_mode, subsample=strides)
-conv_nervana = nervana_conv(x, w, padding=border_mode, strides=strides)
+conv_nervana = nervana_conv(x_shuffled, w_shuffled, padding=border_mode, strides=strides)
 ```
 
 Note that `nervana_conv` will perform a 1D, 2D or 3D convolution depending on whether the inputs are 3D, 4D or 5D tensors.
