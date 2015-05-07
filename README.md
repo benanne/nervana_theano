@@ -3,7 +3,7 @@ A rudimentary wrapper around the fast Maxwell kernels for GEMM and convolution o
 
 This is a work in progress, help is welcome! (see below)
 
-Note that the [Theano](https://github.com/Theano/Theano) team at the LISA lab are separately working on integrating these kernels into the library themselves. However, they are focusing their efforts on the half-precision (fp16) kernels for now, and they are implementing support for this (and for these kernels) using the new Theano backend. I implemented these wrappers because I wanted something that was readily usable using the current Theano backend, so I've only wrapped the single precision (fp32) kernels.
+Note that the [Theano](https://github.com/Theano/Theano) team at the LISA lab are separately working on integrating these kernels into the library themselves. However, they are focusing their efforts on the half-precision (fp16) kernels for now, and they are implementing half precision support (and support for these kernels) using the new Theano backend. I implemented these wrappers because I wanted something that was readily usable using the current Theano backend, so I've only wrapped the single precision (fp32) kernels.
 
 ## Installation
 check out this repository and add the `nervana_theano` module to your Python path.
@@ -59,6 +59,8 @@ This is a work in progress, help / remarks / suggestions / pull requests are ver
 - add wrappers for the pooling kernels
 - optimize the wrappers to avoid unnecessary computation and other slowdowns
 - figure out what needs to change to optimize performance for the GTX 980 (instead of the GTX Titan X only), since more people have this card
+- add support for the built-in ReLU operation of the kernels
+- add Theano optimizations that replace theano.tensor.nnet.conv2d / theano.tensor.dot with the Nervana equivalents automatically
 
 ## Disclaimer
 
