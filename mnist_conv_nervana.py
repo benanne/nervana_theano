@@ -11,7 +11,7 @@ from mnist import train
 
 
 from lasagne.layers.cuda_convnet import bc01_to_c01b, c01b_to_bc01, MaxPool2DCCLayer
-import layers
+from nervana_theano import layers
 
 
 

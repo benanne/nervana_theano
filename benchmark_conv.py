@@ -31,7 +31,7 @@ except (ImportError, NameError):
     print "Note: cuDNN not available"
 
 try:
-    from conv import nervana_conv
+    from nervana_theano.conv import nervana_conv
 except ImportError:
     print "Note: nervanaGPU not available"
     nervana_conv = None
